@@ -1,10 +1,14 @@
-import os, re
+import os, re, sys
 from urllib import urlopen, urlretrieve
 from urlparse import urljoin, urlparse
 import logging
 
 # REMOTE SETTINGS
-URL = "http://127.0.0.1:8000/" # absolute url of page with directory listing
+if len(sys.argv)>1:
+    URL = sys.argv[1]
+else:
+    URL = "http://127.0.0.1:8000/" # absolute url of page with directory listing
+
 REMOTE_DIR_FORMAT = None
 # Uncomment next line to restrict directory names that are downloaded.
 # REMOTE_DIR_FORMAT = re.compile(r'\d+\.\d+\.\w+\/?')
