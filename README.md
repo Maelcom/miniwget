@@ -1,6 +1,6 @@
 temaparser
 ==========
-#### Parse a webpage for links to files, download new files, skip old ones (stored in a history file).
+#### Parse a webpage for links to folders, download new folders recursively, skip existing top-level folders.
 As it turned out, all this can be solved (and in a much more robust way) with:
 
 ##### *wget --mirror -nH --no-parent -R index.html*
