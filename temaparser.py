@@ -36,7 +36,7 @@ def link_is_dir(link):
 #     return False
 
 def set_local_dirs():
-    return {d+os.path.sep for d in os.listdir(DWN_PATH) if os.path.isdir(os.path.join(DWN_PATH, d))}
+    return {d+'/' for d in os.listdir(DWN_PATH) if os.path.isdir(os.path.join(DWN_PATH, d))}
 
 def list_remote_dirs():
     raw_html = urlopen(URL).read()
@@ -55,7 +55,7 @@ def download_dir(dir_link, base_path, base_url):
             if link_is_dir(link):
                 download_dir(link, path, url)
             else:
-                urlretrieve(url+link, path+link)
+                urlretrieve(urljoin(url, link), os.path.join(path, link))
                 print "downloaded file {0}".format(path+link)
                 log.write("downloaded file {0}".format(path+link))
 
