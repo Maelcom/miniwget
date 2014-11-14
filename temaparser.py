@@ -134,9 +134,6 @@ def main():
         loc = set_local_dirs()
         rem = list_remote_dirs(URL)
         target_dirs = [x[0] for x in rem if x[1] not in loc]
-        print loc
-        print rem
-        print target_dirs
 
     for dir_url in target_dirs:
         print "Processing ", dir_url
