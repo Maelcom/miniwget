@@ -1,28 +1,38 @@
-import os, re, sys
+import os, argparse, re
+import sys
 from urllib import urlopen, urlretrieve
 from urlparse import urljoin, urlparse
 import logging
 
-# REMOTE SETTINGS
-if len(sys.argv)>1:
-    URL = sys.argv[1]
-else:
-    URL = "http://127.0.0.1:8000/" # absolute url of page with directory listing
-
-REMOTE_DIR_FORMAT = None
+"""
+LOCAL SETTINGS
+"""
 # Uncomment next line to restrict directory names that are downloaded.
 # REMOTE_DIR_FORMAT = re.compile(r'\d+\.\d+\.\w+\/?')
-
-# LOCAL SETTINGS
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DWN_PATH = os.path.join(BASE_DIR,"downloads") # downloaded files path
-if not os.path.exists(DWN_PATH):
-    os.makedirs(DWN_PATH)
-
+DWN_PATH = os.path.join(BASE_DIR,"downloads")
 logging.basicConfig( filename=os.path.join(BASE_DIR, "download.log"),
                      filemode='w',
                      level=logging.DEBUG,
                      format= '%(asctime)s - %(levelname)s - %(message)s')
+"""
+LOCAL SETTINGS END
+"""
+
+parser = argparse.ArgumentParser(description='Retrieve files/folders from URL.')
+parser.add_argument("url", nargs="?", default="http://127.0.0.1:8000/", help="Absolute url of page with directory listing.")
+parser.add_argument("-f", "--force", action="store_true", help="Overwrite existing files/folders.")
+parser.add_argument("-r", "--recursive", action="store_true", help="Download with subfolders.")
+parser.add_argument("-d", "--direct", action="store_true",
+                    help="Directly download given URL as a folder. \
+                    Otherwise URL is treated as a listing of folders which are \
+                    are downloaded only if they don't exist locally.")
+
+args = parser.parse_args()
+RECURSIVE = args.recursive
+FORCE = args.force
+DIRECT = args.direct
+URL = args.url
 
 def find_links(html_page):
     """
@@ -33,23 +43,27 @@ def find_links(html_page):
     links = re.findall(link_re, html_page)
     return links
 
-# Easy version (use if your site doesn't strip trailing slash from "href=")
 def link_is_dir(link):
+    """
+    Easy version (use if your site doesn't strip trailing slash from "href=")
+    """
     return True if link.endswith('/') else False
 
-# Hard version (with regex matching and empirical check for dir)
 # def link_is_dir(link):
+#     """
+#     Hard version (with regex matching and empirical check for dir)
+#     """
 #     if REMOTE_DIR_FORMAT.match(link):
 #         u = urlopen(urljoin(URL, link))
 #         if u.headers.gettype() == "text/html":
 #             return True
 #     return False
 
-def set_local_dirs():
-    return {d for d in os.listdir(DWN_PATH) if os.path.isdir(os.path.join(DWN_PATH, d))}
+def set_local_dirs(path=DWN_PATH):
+    return {d for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))}
 
-def list_remote_dirs():
-    raw_html = urlopen(URL).read()
+def list_remote_dirs(url=URL):
+    raw_html = urlopen(url).read()
     dir_urls = filter(link_is_dir, find_links(raw_html))
     dir_names = map(url2dir, dir_urls)
     return zip(dir_urls, dir_names)
@@ -57,10 +71,22 @@ def list_remote_dirs():
 def url2dir(dir_url):
     return urlparse(dir_url).path.rstrip('/').split('/')[-1]
 
-def download_dir(dir_url, base_path, base_url):
-    dir_name = url2dir(dir_url)
-    path = os.path.join(base_path, dir_name)
+def download_dir(dir_url, path=DWN_PATH, base_url=URL):
+    # Ensure dir_url is absolute (could be relative up to this point)
     url = urljoin(base_url, dir_url)
+
+    dir_name = url2dir(url)
+    if dir_name:
+        path = os.path.join(path, dir_name)
+
+    if not os.path.exists(path):
+        try:
+            os.makedirs(path)
+        except Exception as e:
+            logging.error("Couldn't create download folder. Error message: {0}".format(e))
+    elif not FORCE and dir_name:
+        logging.warning("target dir already exists - skipping:\n{0}\n".format(path))
+        return
 
     logging.info("="*80)
     logging.info("Found new dir on server!")
@@ -74,32 +100,47 @@ def download_dir(dir_url, base_path, base_url):
     logging.info("total {0} links found".format(len(links)))
     logging.info("="*80)
 
-    try:
-        os.makedirs(path)
-    except Exception as e:
-        logging.error("Couldn't create download folder. Error message: {0}".format(e))
-
+    # Split links to dir_links and file_links
+    # NOTE: these links can be relative -> make absolute before passing them on.
+    file_links, dir_links = [], []
     for link in links:
-        if link_is_dir(link):
-            download_dir(link, path, url)
-        else:
+        dir_links.append(link) if link_is_dir(link) else file_links.append(link)
+
+    # Get files
+    for file_link in file_links:
+        file_url = urljoin(url, file_link)
+        file_name = url2dir(file_link)
+        file_path = os.path.join(path, file_name)
+
+        if FORCE or not os.path.isfile(file_path):
+            logging.info("trying to download\n{0}\ninto\n{1}\n".format(file_url, file_path))
             try:
-                file_name = url2dir(link)
-                logging.info("trying to download\n{0}\ninto\n{1}\n".format(urljoin(url,link), os.path.join(path,file_name)))
-                urlretrieve(urljoin(url, link), os.path.join(path, file_name))
-                logging.info("SUCCESS - downloaded file\n{0}\n".format(link))
+                urlretrieve(file_url, file_path)
+                logging.info("SUCCESS - downloaded file\n{0}\n".format(file_link))
             except Exception as e:
-                logging.error("Couldn't download file\n{0}\nError message: {1}\n".format(link, e))
+                logging.error("Couldn't download file\n{0}\nError message: {1}\n".format(file_link, e))
+        else:
+            logging.warning("file already exists - skipping:\n{0}\n".format(file_name))
 
+    # Get folders
+    if RECURSIVE:
+        for dir_link in dir_links:
+            download_dir(dir_link, path, url)
 
-if __name__ == "__main__":
-    loc = set_local_dirs()
-    rem = list_remote_dirs()
-    target_dirs = [x[0] for x in rem if x[1] not in loc]
-
-    print loc
-    print rem
-    print target_dirs
+def main():
+    if DIRECT:
+        target_dirs=[URL]
+    else:
+        loc = set_local_dirs()
+        rem = list_remote_dirs(URL)
+        target_dirs = [x[0] for x in rem if x[1] not in loc]
+        print loc
+        print rem
+        print target_dirs
 
     for dir_url in target_dirs:
-        download_dir(dir_url, DWN_PATH, URL)
+        print "Processing ", dir_url
+        download_dir(dir_url)
+
+if __name__ == "__main__":
+    main()
