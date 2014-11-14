@@ -1,5 +1,4 @@
 import os, argparse, re
-import sys
 from urllib import urlopen, urlretrieve
 from urlparse import urljoin, urlparse
 import logging
@@ -11,6 +10,8 @@ LOCAL SETTINGS
 # REMOTE_DIR_FORMAT = re.compile(r'\d+\.\d+\.\w+\/?')
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DWN_PATH = os.path.join(BASE_DIR,"downloads")
+if not os.path.exists(DWN_PATH):
+    os.makedirs(DWN_PATH)
 logging.basicConfig( filename=os.path.join(BASE_DIR, "download.log"),
                      filemode='w',
                      level=logging.DEBUG,
@@ -71,6 +72,22 @@ def list_remote_dirs(url=URL):
 def url2dir(dir_url):
     return urlparse(dir_url).path.rstrip('/').split('/')[-1]
 
+def get_files(file_links, path, url):
+    for file_link in file_links:
+        file_url = urljoin(url, file_link)
+        file_name = url2dir(file_link)
+        file_path = os.path.join(path, file_name)
+
+        if FORCE or not os.path.isfile(file_path):
+            logging.info("trying to download\n{0}\ninto\n{1}\n".format(file_url, file_path))
+            try:
+                urlretrieve(file_url, file_path)
+                logging.info("SUCCESS - downloaded file\n{0}\n".format(file_link))
+            except Exception as e:
+                logging.error("Couldn't download file\n{0}\nError message: {1}\n".format(file_link, e))
+        else:
+            logging.warning("file already exists - skipping:\n{0}\n".format(file_name))
+
 def download_dir(dir_url, path=DWN_PATH, base_url=URL):
     # Ensure dir_url is absolute (could be relative up to this point)
     url = urljoin(base_url, dir_url)
@@ -96,31 +113,17 @@ def download_dir(dir_url, path=DWN_PATH, base_url=URL):
 
     dir_page = urlopen(url).read()
     links = find_links(dir_page)
-
-    logging.info("total {0} links found".format(len(links)))
-    logging.info("="*80)
-
     # Split links to dir_links and file_links
     # NOTE: these links can be relative -> make absolute before passing them on.
     file_links, dir_links = [], []
     for link in links:
         dir_links.append(link) if link_is_dir(link) else file_links.append(link)
 
-    # Get files
-    for file_link in file_links:
-        file_url = urljoin(url, file_link)
-        file_name = url2dir(file_link)
-        file_path = os.path.join(path, file_name)
+    logging.info("total {0} links found: {1} files and {2} directories".format(len(links), len(file_links), len(dir_links)))
+    logging.info("="*80)
 
-        if FORCE or not os.path.isfile(file_path):
-            logging.info("trying to download\n{0}\ninto\n{1}\n".format(file_url, file_path))
-            try:
-                urlretrieve(file_url, file_path)
-                logging.info("SUCCESS - downloaded file\n{0}\n".format(file_link))
-            except Exception as e:
-                logging.error("Couldn't download file\n{0}\nError message: {1}\n".format(file_link, e))
-        else:
-            logging.warning("file already exists - skipping:\n{0}\n".format(file_name))
+    # Get files
+    get_files(file_links, path, url)
 
     # Get folders
     if RECURSIVE:
