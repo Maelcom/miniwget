@@ -2,13 +2,51 @@ import os, argparse, re
 from urllib import urlopen, urlretrieve
 from urlparse import urljoin, urlparse
 import logging
+import fnmatch
+
+"""
+SETUP
+"""
+parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter,
+    description='Retrieve files/folders from URL.',
+    epilog='Example: \n \
+    $ %s -d -r http://127.0.0.1/repo/v2.10/ ~/mydir --mask="*.zip"\n\n \
+    This will download .zip files found by given URL into \n \
+    "~/mydir/downloads/v2.10" (with recursive subdirs).' % __file__)
+parser.add_argument("url", help="Absolute url of page with directory listing.")
+parser.add_argument("destination", nargs="?", help="Destination for downloaded files.")
+parser.add_argument("-m", "--mask", type=str, help="Download only files matching this mask.")
+parser.add_argument("-f", "--force", action="store_true", help="Overwrite existing files/folders.")
+parser.add_argument("-r", "--recursive", action="store_true", help="Download with subfolders.")
+parser.add_argument("-d", "--direct", action="store_true",
+                    help="Directly download given URL as a folder. \
+                    Otherwise URL is treated as a listing of folders which are \
+                    are downloaded only if they don't exist locally.")
+
+args = parser.parse_args()
+
+RECURSIVE = args.recursive
+FORCE = args.force
+DIRECT = args.direct
+MASK = args.mask
+URL = args.url
+DEST = args.destination
+
+if DEST:
+    BASE_DIR = os.path.join(os.getcwd(), DEST)
+    if not os.path.exists(BASE_DIR):
+        raise Exception("Invalid destination specified: "+BASE_DIR)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+"""
+SETUP END
+"""
 
 """
 LOCAL SETTINGS
 """
 # Uncomment next line to restrict directory names that are downloaded.
 # REMOTE_DIR_FORMAT = re.compile(r'\d+\.\d+\.\w+\/?')
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DWN_PATH = os.path.join(BASE_DIR,"downloads")
 if not os.path.exists(DWN_PATH):
     os.makedirs(DWN_PATH)
@@ -20,20 +58,6 @@ logging.basicConfig( filename=os.path.join(BASE_DIR, "download.log"),
 LOCAL SETTINGS END
 """
 
-parser = argparse.ArgumentParser(description='Retrieve files/folders from URL.')
-parser.add_argument("url", nargs="?", default="http://127.0.0.1:8000/", help="Absolute url of page with directory listing.")
-parser.add_argument("-f", "--force", action="store_true", help="Overwrite existing files/folders.")
-parser.add_argument("-r", "--recursive", action="store_true", help="Download with subfolders.")
-parser.add_argument("-d", "--direct", action="store_true",
-                    help="Directly download given URL as a folder. \
-                    Otherwise URL is treated as a listing of folders which are \
-                    are downloaded only if they don't exist locally.")
-
-args = parser.parse_args()
-RECURSIVE = args.recursive
-FORCE = args.force
-DIRECT = args.direct
-URL = args.url
 
 def find_links(html_page):
     """
@@ -117,7 +141,11 @@ def download_dir(dir_url, path=DWN_PATH, base_url=URL):
     # NOTE: these links can be relative -> make absolute before passing them on.
     file_links, dir_links = [], []
     for link in links:
-        dir_links.append(link) if link_is_dir(link) else file_links.append(link)
+        if link_is_dir(link):
+            dir_links.append(link)
+        elif fnmatch.fnmatch(url2dir(link), MASK):
+            file_links.append(link)
+
 
     logging.info("total {0} links found: {1} files and {2} directories".format(len(links), len(file_links), len(dir_links)))
     logging.info("="*80)
