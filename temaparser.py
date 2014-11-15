@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpForm
     epilog='Example: \n \
     $ %s -d -r http://127.0.0.1/repo/v2.10/ ~/mydir --mask="*.zip"\n\n \
     This will download .zip files found by given URL into \n \
-    "~/mydir/downloads/v2.10" (with recursive subdirs).' % __file__)
+    "~/mydir/v2.10" (with recursive subdirs).' % __file__)
 parser.add_argument("url", help="Absolute url of page with directory listing.")
 parser.add_argument("destination", nargs="?", help="Destination for downloaded files.")
 parser.add_argument("-m", "--mask", type=str, help="Download only files matching this mask.")
