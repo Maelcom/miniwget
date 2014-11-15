@@ -32,12 +32,14 @@ MASK = args.mask
 URL = args.url
 DEST = args.destination
 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 if DEST:
-    BASE_DIR = os.path.join(os.getcwd(), DEST)
-    if not os.path.exists(BASE_DIR):
-        raise Exception("Invalid destination specified: "+BASE_DIR)
+    DWN_PATH = os.path.join(os.getcwd(), DEST)
+    if not os.path.exists(DWN_PATH):
+        raise Exception("Invalid destination specified: "+DWN_PATH)
 else:
-    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    DWN_PATH = os.path.join(BASE_DIR,"downloads")
 """
 SETUP END
 """
@@ -47,7 +49,7 @@ LOCAL SETTINGS
 """
 # Uncomment next line to restrict directory names that are downloaded.
 # REMOTE_DIR_FORMAT = re.compile(r'\d+\.\d+\.\w+\/?')
-DWN_PATH = os.path.join(BASE_DIR,"downloads")
+
 if not os.path.exists(DWN_PATH):
     os.makedirs(DWN_PATH)
 logging.basicConfig( filename=os.path.join(BASE_DIR, "download.log"),
