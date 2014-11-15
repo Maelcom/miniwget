@@ -143,7 +143,7 @@ def download_dir(dir_url, path=DWN_PATH, base_url=URL):
     for link in links:
         if link_is_dir(link):
             dir_links.append(link)
-        elif fnmatch.fnmatch(url2dir(link), MASK):
+        elif not MASK or fnmatch.fnmatch(url2dir(link), MASK):
             file_links.append(link)
 
 
