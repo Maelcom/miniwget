@@ -3,6 +3,7 @@ from urllib import urlopen, urlretrieve
 from urlparse import urljoin, urlparse
 import logging
 import fnmatch
+import sys
 
 """
 SETUP
@@ -98,6 +99,21 @@ def list_remote_dirs(url=URL):
 def url2dir(dir_url):
     return urlparse(dir_url).path.rstrip('/').split('/')[-1]
 
+def _progressbar_hook(file_name):
+    def inner_hook(blocks, block_size, file_size, bar_length=25):
+        got_size = min(blocks * block_size, file_size)
+        percent = float(got_size) / file_size if file_size>0 else 1.0
+        dots = int(percent * bar_length)
+        bar = '[' + '.'*dots + ' '*(bar_length-dots) + ']'
+
+        output = "{0:3}% {1} {2} / {3} kB \r".format(int(percent*100), bar, got_size, file_size)
+        if not blocks:
+            sys.stdout.write('downloading {0}\n'.format(file_name))
+
+        sys.stdout.write(output)
+        sys.stdout.flush()
+    return inner_hook
+
 def get_files(file_links, path, url):
     for file_link in file_links:
         file_url = urljoin(url, file_link)
@@ -107,7 +123,8 @@ def get_files(file_links, path, url):
         if FORCE or not os.path.isfile(file_path):
             logging.info("trying to download\n{0}\ninto\n{1}\n".format(file_url, file_path))
             try:
-                urlretrieve(file_url, file_path)
+                urlretrieve(file_url, file_path, _progressbar_hook(file_name))
+                sys.stdout.write('\n')
                 logging.info("SUCCESS - downloaded file\n{0}\n".format(file_link))
             except Exception as e:
                 logging.error("Couldn't download file\n{0}\nError message: {1}\n".format(file_link, e))
@@ -169,7 +186,7 @@ def main():
         target_dirs = [x[0] for x in rem if x[1] not in loc]
 
     for dir_url in target_dirs:
-        print "Processing ", dir_url
+        sys.stdout.write("\nProcessing folder {0}\n".format(dir_url))
         download_dir(dir_url)
 
 if __name__ == "__main__":
