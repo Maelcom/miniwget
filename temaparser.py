@@ -38,7 +38,10 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 if DEST:
     DWN_PATH = os.path.join(os.getcwd(), DEST)
     if not os.path.exists(DWN_PATH):
-        raise Exception("Invalid destination specified: "+DWN_PATH)
+        try:
+            os.makedirs(DWN_PATH)
+        except:
+            raise
 else:
     DWN_PATH = os.path.join(BASE_DIR,"downloads")
 """
