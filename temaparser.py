@@ -51,9 +51,17 @@ LOCAL SETTINGS
 # Uncomment next line to restrict directory names that are downloaded.
 # REMOTE_DIR_FORMAT = re.compile(r'\d+\.\d+\.\w+\/?')
 
+LOG_FILE = os.path.join(BASE_DIR, "download.log")
+IGNORE_FILE = os.path.join(BASE_DIR, ".ignorelist")
+
+ignore_list = []
+if os.path.isfile(IGNORE_FILE):
+    with open(IGNORE_FILE, 'r') as f:
+        ignore_list = [x.strip().strip('\\/') for x in f]
+
 if not os.path.exists(DWN_PATH):
     os.makedirs(DWN_PATH)
-logging.basicConfig( filename=os.path.join(BASE_DIR, "download.log"),
+logging.basicConfig( filename=LOG_FILE,
                      filemode='w',
                      level=logging.DEBUG,
                      format= '%(asctime)s - %(levelname)s - %(message)s')
@@ -137,7 +145,12 @@ def download_dir(dir_url, path=DWN_PATH, base_url=URL):
 
     dir_name = url2dir(url)
     if dir_name:
-        path = os.path.join(path, dir_name)
+        if dir_name not in ignore_list:
+            path = os.path.join(path, dir_name)
+        else:
+            return
+
+    sys.stdout.write("\nProcessing folder {0}\n".format(dir_url))
 
     if not os.path.exists(path):
         try:
@@ -185,8 +198,10 @@ def main():
         rem = list_remote_dirs(URL)
         target_dirs = [x[0] for x in rem if x[1] not in loc]
 
+        if ignore_list:
+            sys.stdout.write("Will skip folders listed in {0}\n".format(IGNORE_FILE))
+
     for dir_url in target_dirs:
-        sys.stdout.write("\nProcessing folder {0}\n".format(dir_url))
         download_dir(dir_url)
 
 if __name__ == "__main__":
