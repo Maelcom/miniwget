@@ -57,7 +57,7 @@ IGNORE_FILE = os.path.join(BASE_DIR, ".ignorelist")
 ignore_list = []
 if os.path.isfile(IGNORE_FILE):
     with open(IGNORE_FILE, 'r') as f:
-        ignore_list = [x.strip().strip('\\/') for x in f]
+        ignore_list = [x.strip().strip('\\/') for x in f if not x.strip().startswith('#')]
 
 if not os.path.exists(DWN_PATH):
     os.makedirs(DWN_PATH)
