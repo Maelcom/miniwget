@@ -1,4 +1,4 @@
-temaparser
+miniwget
 ==========
 #### Parse a webpage for links to files/folders, download them recursively.
 As it turned out, all this can be solved (and in a much more robust way) with:
