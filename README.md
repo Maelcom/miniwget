@@ -9,7 +9,7 @@ Nevertheless, let this remain a tribute to the gods of Pythonism.
 
 Usage
 ----------
-    usage: temaparser.py [-h] [-m MASK] [-f] [-r] [-d] url [destination]
+    usage: miniwget.py [-h] [-m MASK] [-f] [-r] [-d] url [destination]
 
     positional arguments:
       url                   Absolute url of page with directory listing.
@@ -26,9 +26,9 @@ Usage
 
 Examples
 ----------
-    $ temaparser.py http://127.0.0.1/repo/
+    $ miniwget.py http://127.0.0.1/repo/
 Downloads all new (non-existant locally) folders from given URL into "./downloads/".
 
-    $ temaparser.py -d -r http://127.0.0.1/repo/v2.10/ ~/mydir --mask="*.zip"
+    $ miniwget.py -d -r http://127.0.0.1/repo/v2.10/ ~/mydir --mask="*.zip"
 Downloads .zip files from given URL into "~/mydir/v2.10" (including recursive subdirs).
 
